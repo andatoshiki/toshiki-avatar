@@ -7,17 +7,47 @@ before:
     - go mod tidy
 
 builds:
-  - id: toshiki-avatar
+  # Linux amd64 with CGO enabled (WebP support)
+  - id: toshiki-avatar-linux-amd64
     main: ./main.go
     binary: toshiki-avatar
-    env:
-      - CGO_ENABLED=1
     goos:
       - linux
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=1
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
+  # Linux arm64 without CGO (pure Go, PNG/JPEG only)
+  - id: toshiki-avatar-linux-arm64
+    main: ./main.go
+    binary: toshiki-avatar
+    goos:
+      - linux
+    goarch:
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
+  # macOS Intel + Apple Silicon (pure Go)
+  - id: toshiki-avatar-darwin
+    main: ./main.go
+    binary: toshiki-avatar
+    goos:
       - darwin
     goarch:
       - amd64
       - arm64
+    env:
+      - CGO_ENABLED=0
     flags:
       - -trimpath
     ldflags:
@@ -26,7 +56,9 @@ builds:
 archives:
   - id: default
     builds:
-      - toshiki-avatar
+      - toshiki-avatar-linux-amd64
+      - toshiki-avatar-linux-arm64
+      - toshiki-avatar-darwin
     format_overrides:
       - goos: windows
         format: zip
