@@ -1,91 +1,35 @@
-version: 2
+name: Release
 
-project_name: toshiki-avatar
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
 
-before:
-  hooks:
-    - go mod tidy
+permissions:
+  contents: write
 
-builds:
-  # Linux amd64 with CGO enabled (WebP support)
-  - id: toshiki-avatar-linux-amd64
-    main: ./main.go
-    binary: toshiki-avatar
-    goos:
-      - linux
-    goarch:
-      - amd64
-    env:
-      - CGO_ENABLED=1
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  # Linux arm64 without CGO (PNG/JPEG only)
-  - id: toshiki-avatar-linux-arm64
-    main: ./main.go
-    binary: toshiki-avatar
-    goos:
-      - linux
-    goarch:
-      - arm64
-    env:
-      - CGO_ENABLED=0
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"   # stable current Go (1.24 does not exist yet)
+          cache: true
 
-  # macOS Intel + Apple Silicon without CGO (PNG/JPEG only)
-  - id: toshiki-avatar-darwin
-    main: ./main.go
-    binary: toshiki-avatar
-    goos:
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    env:
-      - CGO_ENABLED=0
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w
+      - name: Install libwebp
+        run: sudo apt-get update && sudo apt-get install -y libwebp-dev pkg-config
 
-archives:
-  - id: default
-    builds:
-      - toshiki-avatar-linux-amd64
-      - toshiki-avatar-linux-arm64
-      - toshiki-avatar-darwin
-    format_overrides:
-      - goos: windows
-        format: zip
-    name_template: >-
-      {{ .ProjectName }}-
-      {{- lower .Os }}-
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-
-    files:
-      - README.md
-      - LICENSE
-      - "avatars/*"
-
-checksum:
-  name_template: "checksums.txt"
-
-changelog:
-  sort: desc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
-      - '^ci:'
-
-release:
-  github:
-    owner: andatoshiki
-    name: toshiki-avatar
+      - name: Set up GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: v2.4.5   # explicitly use GoReleaser v2
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
