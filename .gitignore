@@ -1,1 +1,6 @@
 dist
+node_modules
+# Ignore all files under internal/server/web/
+internal/server/web/*
+# But do not ignore the folder itself
+!internal/server/web/.gitkeep

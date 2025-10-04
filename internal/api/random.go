@@ -1,11 +1,12 @@
 package api
-package api
 
 import (
 	"encoding/json"
 	"net/http"
 	"github.com/andatoshiki/toshiki-avatar/internal/avatar"
 	"strconv"
+	apperr "github.com/andatoshiki/toshiki-avatar/internal/errors"
+	encode "github.com/andatoshiki/toshiki-avatar/internal/encode"
 )
 
 type RandomHandler struct {
@@ -21,12 +22,23 @@ func NewRandomHandler(avatarService *avatar.AvatarService, imgType string) *Rand
 }
 
 func (h *RandomHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	imgPath := h.AvatarService.RandomImage()
-	sizeStr := r.URL.Query().Get("s")
-	size, _ := strconv.Atoi(sizeStr)
-	if size == 0 {
-		size = 128
+    // Prevent caching so each refresh gets a new random avatar
+    w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+    w.Header().Set("Pragma", "no-cache")
+    w.Header().Set("Expires", "0")
+    w.Header().Set("Surrogate-Control", "no-store")
+
+	if len(h.AvatarService.Images) == 0 {
+		http.Error(w, apperr.ErrAvatarNotFound.Error(), http.StatusNotFound)
+		return
 	}
+
+	imgPath := h.AvatarService.RandomImage()
+       sizeStr := r.URL.Query().Get("s")
+       size, err := strconv.Atoi(sizeStr)
+       if sizeStr == "" || err != nil || size <= 0 {
+	       size = 128
+       }
 
 	format := r.URL.Query().Get("format")
 	if format == "json" || r.Header.Get("Accept") == "application/json" {
@@ -39,18 +51,32 @@ func (h *RandomHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resized, err := avatar.ResizeImage(imgPath, size)
-	if err != nil {
-		http.Error(w, "failed to open image", http.StatusInternalServerError)
-		return
-	}
+       resized, err := avatar.ResizeImage(imgPath, size)
+       if err != nil {
+	       http.Error(w, "failed to decode or resize image", http.StatusInternalServerError)
+	       return
+       }
 
 	switch h.ImgType {
 	case "jpg", "jpeg":
 		w.Header().Set("Content-Type", "image/jpeg")
-		avatar.EncodeJPEG(w, resized)
-	default:
+		err := encode.EncodeJPEG(w, resized)
+		if err != nil {
+			http.Error(w, "failed to encode jpeg", http.StatusInternalServerError)
+		}
+	case "webp":
+		w.Header().Set("Content-Type", "image/webp")
+		err := encode.EncodeWebP(w, resized)
+		if err != nil {
+			http.Error(w, "failed to encode webp", http.StatusInternalServerError)
+		}
+	case "png":
 		w.Header().Set("Content-Type", "image/png")
-		avatar.EncodePNG(w, resized)
+		err := encode.EncodePNG(w, resized)
+		if err != nil {
+			http.Error(w, "failed to encode png", http.StatusInternalServerError)
+		}
+	default:
+		http.Error(w, apperr.ErrInvalidImageType.Error(), http.StatusBadRequest)
 	}
 }

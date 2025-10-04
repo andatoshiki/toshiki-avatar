@@ -1,14 +1,32 @@
-
 package server
 
+
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"strconv"
 	"github.com/andatoshiki/toshiki-avatar/internal/avatar"
 	"github.com/andatoshiki/toshiki-avatar/internal/api"
+	apperr "github.com/andatoshiki/toshiki-avatar/internal/errors"
+	encode "github.com/andatoshiki/toshiki-avatar/internal/encode"
 )
+
+//go:embed web/* web/**/*
+var staticFiles embed.FS
+
+
+
+// StaticHandler serves the embedded static frontend (Next.js export)
+func StaticHandler() http.Handler {
+	content, err := fs.Sub(staticFiles, "web")
+	if err != nil {
+		panic("failed to get embedded static files: " + err.Error())
+	}
+	return http.FileServer(http.FS(content))
+}
 
 type Server struct {
 	AvatarService *avatar.AvatarService
@@ -29,13 +47,18 @@ func (s *Server) AvatarHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(s.AvatarService.Images) == 0 {
+		http.Error(w, apperr.ErrAvatarNotFound.Error(), http.StatusNotFound)
+		return
+	}
+
 	imgPath := s.AvatarService.PickImage(hash)
 
-	sizeStr := r.URL.Query().Get("s")
-	size, _ := strconv.Atoi(sizeStr)
-	if size == 0 {
-		size = 128
-	}
+       sizeStr := r.URL.Query().Get("s")
+       size, err := strconv.Atoi(sizeStr)
+       if sizeStr == "" || err != nil || size <= 0 {
+	       size = 128
+       }
 
 	format := r.URL.Query().Get("format")
 	if format == "json" || r.Header.Get("Accept") == "application/json" {
@@ -51,27 +74,43 @@ func (s *Server) AvatarHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resized, err := avatar.ResizeImage(imgPath, size)
-	if err != nil {
-		http.Error(w, "failed to open image", http.StatusInternalServerError)
-		return
-	}
+       resized, err := avatar.ResizeImage(imgPath, size)
+       if err != nil {
+	       http.Error(w, "failed to decode or resize image", http.StatusInternalServerError)
+	       return
+       }
 
 	switch s.ImgType {
 	case "jpg", "jpeg":
 		w.Header().Set("Content-Type", "image/jpeg")
-		avatar.EncodeJPEG(w, resized)
-	default:
+		err := encode.EncodeJPEG(w, resized)
+		if err != nil {
+			http.Error(w, "failed to encode jpeg", http.StatusInternalServerError)
+		}
+	case "webp":
+		w.Header().Set("Content-Type", "image/webp")
+		err := encode.EncodeWebP(w, resized)
+		if err != nil {
+			http.Error(w, "failed to encode webp", http.StatusInternalServerError)
+		}
+	case "png":
 		w.Header().Set("Content-Type", "image/png")
-		avatar.EncodePNG(w, resized)
+		err := encode.EncodePNG(w, resized)
+		if err != nil {
+			http.Error(w, "failed to encode png", http.StatusInternalServerError)
+		}
+	default:
+		http.Error(w, apperr.ErrInvalidImageType.Error(), http.StatusBadRequest)
 	}
 }
 
 func (s *Server) Start(port int) error {
-	randomHandler := api.NewRandomHandler(s.AvatarService, s.ImgType)
+	// randomHandler := api.NewRandomHandler(s.AvatarService, s.ImgType)
+	http.Handle("/", StaticHandler())
 	http.HandleFunc("/avatar/", s.AvatarHandler)
-	http.Handle("/random", randomHandler)
+	// http.Handle("/random", randomHandler)
+	http.HandleFunc("/healthz", api.HealthHandler)
 	addr := fmt.Sprintf(":%d", port)
-	fmt.Printf("Anime avatar server running on %s\n", addr)
+	fmt.Printf("toshiki-anime avatar server running on %s\n", addr)
 	return http.ListenAndServe(addr, nil)
 }

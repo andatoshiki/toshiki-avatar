@@ -1,15 +1,3 @@
-import (
-	// ...existing code...
-	"math/rand"
-	"time"
-)
-// RandomImage returns a random image path from the available images
-func (a *AvatarService) RandomImage() string {
-	rand.Seed(time.Now().UnixNano())
-	idx := rand.Intn(len(a.Images))
-	return a.Images[idx]
-}
-
 package avatar
 
 import (
@@ -17,10 +5,16 @@ import (
 	"sort"
 	"github.com/disintegration/imaging"
 	"image"
-	"image/png"
-	"image/jpeg"
-	"io"
+	"math/rand"
+	"time"
 )
+
+// RandomImage returns a random image path from the available images
+func (a *AvatarService) RandomImage() string {
+	rand.Seed(time.Now().UnixNano())
+	idx := rand.Intn(len(a.Images))
+	return a.Images[idx]
+}
 
 type AvatarService struct {
 	Images  []string
@@ -50,10 +44,4 @@ func ResizeImage(path string, size int) (image.Image, error) {
 	return resized, nil
 }
 
-func EncodePNG(w io.Writer, img image.Image) error {
-	return png.Encode(w, img)
-}
 
-func EncodeJPEG(w io.Writer, img image.Image) error {
-	return jpeg.Encode(w, img, &jpeg.Options{Quality: 85})
-}
