@@ -7,7 +7,7 @@ This project is a self-hosted alternative to Gravatar. Instead of relying on Gra
 ## 2: Features
 - Serve custom avatars from a local directory
 - Deterministic mapping from email MD5 hash to avatar image
-- Supports PNG, JPEG, and WebP output formats
+- Supports PNG and JPEG output formats
 - Resize images with the `?s=` query parameter
 - Return JSON metadata with `?format=json` or `Accept: application/json`
 
@@ -20,34 +20,13 @@ go mod tidy
 
 ### 3.1: System Dependencies
 
-This project requires `libwebp` and `pkg-config` to build with WebP support.
 
-#### 3.1.1: macOS
-```bash
-brew install webp pkg-config
-```
-
-#### 3.1.2: Ubuntu / Debian
-```bash
-sudo apt update
-sudo apt install -y libwebp-dev pkg-config
-```
-
-#### 3.1.3: Fedora
-```bash
-sudo dnf install -y libwebp-devel pkg-config
-```
-
-#### 3.1.4: Arch Linux
-```bash
-sudo pacman -S libwebp pkgconf
-```
 
 ## 4: Usage
 Run the server with:
 
 ```bash
-go run main.go -p <port> -t <png|jpg|webp> -d <directory>
+go run main.go -p <port> -t <png|jpg> -d <directory>
 ```
 
 Example:
@@ -88,4 +67,4 @@ Response:
 ## 6: Notes
 - Works as a drop-in Gravatar replacement by swapping the domain in existing apps
 - Deterministic mapping: the same email hash always maps to the same avatar
-- WebP output requires `libwebp` installed on your system
+
