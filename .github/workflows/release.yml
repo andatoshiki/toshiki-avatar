@@ -122,4 +122,4 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.4.5
-          args: build --clean
+          args: build --clean --snapshot
