@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "export NODE_OPTIONS=--openssl-legacy-provider next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "deploy": "next-sitemap && next build && next export && pnpm move-out",
     "move-out": "rm -rf ../internal/server/web; mkdir -p ../internal/server/web; [ -d out ] && mv out/* ../internal/server/web/ || echo 'No out directory to move.'; find ../internal/server/web -type d -empty -delete",
-    "export": "export NODE_OPTIONS=--openssl-legacy-provider next export"
+    "export": "next export"
   },
   "dependencies": {
     "@next/mdx": "^11.1.4",

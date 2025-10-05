@@ -42,12 +42,20 @@ jobs:
         run: cd frontend && pnpm install
 
       - name: Build frontend
-        run: cd frontend && pnpm build && pnpm export
+        run: |
+          cd frontend
+          export NODE_OPTIONS=--openssl-legacy-provider
+          pnpm build
+          pnpm export
 
       - name: Move static export to Go embed folder
         run: |
           rm -rf internal/server/web/*
-          cp -r frontend/out/* internal/server/web/
+          if [ -d frontend/out ]; then
+            cp -r frontend/out/* internal/server/web/
+          else
+            echo "No frontend/out directory to copy."
+          fi
 
       - name: Set up GoReleaser
         uses: goreleaser/goreleaser-action@v5
@@ -88,12 +96,20 @@ jobs:
         run: cd frontend && pnpm install
 
       - name: Build frontend
-        run: cd frontend && pnpm build && pnpm export
+        run: |
+          cd frontend
+          export NODE_OPTIONS=--openssl-legacy-provider
+          pnpm build
+          pnpm export
 
       - name: Move static export to Go embed folder
         run: |
           rm -rf internal/server/web/*
-          cp -r frontend/out/* internal/server/web/
+          if [ -d frontend/out ]; then
+            cp -r frontend/out/* internal/server/web/
+          else
+            echo "No frontend/out directory to copy."
+          fi
 
       - name: Go build
         run: go build -v ./...
