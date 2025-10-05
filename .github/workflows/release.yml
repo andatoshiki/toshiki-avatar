@@ -117,5 +117,9 @@ jobs:
       - name: Remove empty directories from embed folder
         run: find internal/server/web -type d -empty -delete
 
-      - name: Go build
-        run: go build -v ./...
+      - name: GoReleaser build-only
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: v2.4.5
+          args: build --clean
